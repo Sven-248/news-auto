@@ -43,7 +43,7 @@ class NormalizePipeline:
 class DedupePipeline:
     """
     Leichte Variante: Dedup nur pro Lauf (in-memory).
-    Später kannst du das persistent machen (DB UNIQUE Index / Redis Set).
+    Später persistent machen (DB UNIQUE Index / Redis Set).
     """
 
     def __init__(self):
@@ -60,11 +60,25 @@ class DedupePipeline:
 class JsonlExportPipeline:
     def open_spider(self, spider):
         os.makedirs("data", exist_ok=True)
-        self.f = open("data/news.jsonl", "a", encoding="utf-8")
+        self.first = True
+        self.f = open("data/news.json", "w", encoding="utf-8")
+        self.f.write("[\n")
 
     def close_spider(self, spider):
+        self.f.write("\n]\n")
         self.f.close()
 
     def process_item(self, item, spider):
-        self.f.write(json.dumps(dict(item), ensure_ascii=False) + "\n")
+        obj = dict(item)
+
+        # defensive: nie kaputtes JSON schreiben
+        for k, v in obj.items():
+            if v is None:
+                obj[k] = None
+
+        if not self.first:
+            self.f.write(",\n")
+        self.f.write(json.dumps(obj, ensure_ascii=False))
+        self.first = False
+
         return item

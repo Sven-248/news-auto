@@ -37,7 +37,7 @@ class RssSpider(scrapy.Spider):
             if not url:
                 continue
 
-            # section aus feed url ableiten (leicht, optional)
+            # section aus feed url ableiten
             rss_url = response.meta.get("rss_url") or ""
             section = rss_url.rsplit("/", 1)[-1].replace(".rss", "").strip() or None
 
@@ -53,7 +53,7 @@ class RssSpider(scrapy.Spider):
                 section=section,
             )
 
-            # Leichter Weg: wir versuchen Volltext zu holen – wenn paywalled/blocked => full_text bleibt ggf. kurz/leer.
+            # Leichter Weg: Volltext zu holen – wenn paywalled/blocked => full_text bleibt ggf. kurz/leer.
             yield scrapy.Request(
                 url,
                 callback=self.parse_article,
@@ -71,7 +71,7 @@ class RssSpider(scrapy.Spider):
         paragraphs = response.xpath("//article//p//text()").getall()
         text = " ".join([p.strip() for p in paragraphs if p and p.strip()])
 
-        # fallback, falls article-tag fehlt: alle p-tags (oft noisier)
+        # fallback, falls article-tag fehlt: alle p-tags
         if not text:
             paragraphs = response.xpath("//p//text()").getall()
             text = " ".join([p.strip() for p in paragraphs if p and p.strip()])
