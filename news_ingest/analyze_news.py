@@ -2,13 +2,38 @@ import json
 import time
 from pathlib import Path
 import requests
+import os
+from dotenv import load_dotenv
 
-INPUT_PATH = Path("data/news.json")  # falls JSONL: data/news.jsonl
-OUTPUT_PATH = Path("data/analyzed_news.jsonl")
+load_dotenv()
 
-# LLM_URL = "http://localhost:8000/chat"  # ggf. an deine API anpassen
-LLM_URL = "http://localhost:11434/api/generate"
-MODEL = "qwen2.5:7b"
+INPUT_PATH = Path(os.getenv("NEWS_INPUT_PATH", "data/news.jsonl"))
+OUTPUT_PATH = Path(os.getenv("NEWS_ANALYZED_OUTPUT_PATH", "data/analyzed_news.jsonl"))
+
+LLM_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+MODEL = os.getenv("OLLAMA_MODEL", "qwen3:4b")
+
+MIN_TEXT_LENGTH = int(os.getenv("MIN_TEXT_LENGTH", "200"))
+LLM_TIMEOUT_SECONDS = int(os.getenv("LLM_TIMEOUT_SECONDS", "300"))
+LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+LLM_NUM_PREDICT = int(os.getenv("LLM_NUM_PREDICT", "1200"))
+
+
+def get_ollama_base_url() -> str:
+    if "/api/generate" in LLM_URL:
+        return LLM_URL.split("/api/generate")[0]
+    return LLM_URL.rstrip("/")
+
+
+def check_ollama() -> None:
+    base_url = get_ollama_base_url()
+    try:
+        response = requests.get(f"{base_url}/api/tags", timeout=5)
+        response.raise_for_status()
+    except Exception as e:
+        raise SystemExit(
+            f"Ollama is not reachable. Start it first: ollama serve\nError: {e}"
+        )
 
 
 def load_articles(path: Path):
@@ -71,16 +96,16 @@ def call_llm(prompt: str) -> dict:
         "model": MODEL,
         "prompt": prompt,
         "stream": False,
-        "options": {"temperature": 0.2, "num_predict": 1200},
+        "options": {"temperature": LLM_TEMPERATURE, "num_predict": LLM_NUM_PREDICT},
     }
 
-    response = requests.post(LLM_URL, json=payload, timeout=300)
+    response = requests.post(LLM_URL, json=payload, timeout=LLM_TIMEOUT_SECONDS)
     response.raise_for_status()
 
     data = response.json()
     raw = data.get("response", "").strip()
 
-    # Falls Modell Markdown-Fences ausgibt
+    # if the model outputs Markdown fences
     if raw.startswith("```json"):
         raw = raw.replace("```json", "", 1).strip()
     if raw.startswith("```"):
@@ -101,6 +126,7 @@ def call_llm(prompt: str) -> dict:
 
 
 def main():
+    check_ollama()
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     articles = list(load_articles(INPUT_PATH))
@@ -115,7 +141,7 @@ def main():
                 or ""
             )
 
-            if len(text.strip()) < 200:
+            if len(text.strip()) < LLM_TIMEOUT_SECONDS:
                 print(f"[{i}] skipped: too little text")
                 continue
 

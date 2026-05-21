@@ -2,3 +2,9 @@ scrapy==2.11.2
 feedparser==6.0.11
 python-dateutil==2.9.0.post0
 w3lib==2.2.1
+
+requests==2.32.3
+python-dotenv==1.0.1
+
+streamlit==1.39.0
+pandas==2.2.3

@@ -1,18 +1,40 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 *.pyo
 *.pyd
+
+# Virtual environments
 .venv/
 venv/
+env/
+ENV/
 
 # Scrapy
 .scrapy/
 *.log
 
-# Data / Outputs
+# Environment / local config
+.env
+.env.local
+.env.*.local
+
+# Data / generated outputs
 data/
 *.jsonl
+*.db
+*.sqlite
+*.sqlite3
+
+# Models
+models/
+*.gguf
+*.bin
+*.safetensors
+
+# Streamlit
+.streamlit/secrets.toml
 
 # OS
 .DS_Store

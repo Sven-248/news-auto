@@ -3,8 +3,12 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+import os
+from dotenv import load_dotenv
 
-DATA_PATH = Path("data/analyzed_news.jsonl")
+load_dotenv()
+
+DATA_PATH = Path(os.getenv("DASHBOARD_DATA_PATH", "data/analyzed_news.jsonl"))
 
 
 def load_jsonl(path: Path) -> pd.DataFrame:

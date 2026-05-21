@@ -11,7 +11,7 @@ class RssSpider(scrapy.Spider):
 
     def __init__(self, source=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.only_source = source  # optional: nur eine Quelle crawlen
+        self.only_source = source  # optional: crawl only a single source
 
     def start_requests(self):
         for source, cfg in SOURCES.items():
@@ -29,6 +29,24 @@ class RssSpider(scrapy.Spider):
                     },
                 )
 
+    def infer_section_from_rss_url(self, rss_url: str) -> str | None:
+        url = rss_url.lower()
+
+        if "politik" in url or "inland" in url or "ausland" in url:
+            return "politik"
+        if "wirtschaft" in url:
+            return "wirtschaft"
+        if "gesellschaft" in url:
+            return "gesellschaft"
+        if "wissen" in url:
+            return "wissen"
+        if "technologie" in url or "tech" in url or "it" in url:
+            return "technologie"
+        if "nachrichten" in url or "index" in url:
+            return "nachrichten"
+
+        return None
+
     def parse_rss(self, response):
         feed = feedparser.parse(response.text)
 
@@ -37,9 +55,9 @@ class RssSpider(scrapy.Spider):
             if not url:
                 continue
 
-            # section aus feed url ableiten
+            # derive section from the feed URL
             rss_url = response.meta.get("rss_url") or ""
-            section = rss_url.rsplit("/", 1)[-1].replace(".rss", "").strip() or None
+            section = self.infer_section_from_rss_url(rss_url)
 
             item = NewsItem(
                 source=response.meta["source"],
@@ -53,7 +71,7 @@ class RssSpider(scrapy.Spider):
                 section=section,
             )
 
-            # Leichter Weg: Volltext zu holen – wenn paywalled/blocked => full_text bleibt ggf. kurz/leer.
+            # easy way: fetch full text — if paywalled/blocked => full_text may remain short/empty
             yield scrapy.Request(
                 url,
                 callback=self.parse_article,
@@ -67,11 +85,11 @@ class RssSpider(scrapy.Spider):
         # canonical
         item["canonical_url"] = response.xpath("//link[@rel='canonical']/@href").get()
 
-        # sehr einfache Extraktion: <article> <p>
+        # easy extraction: <article> <p>
         paragraphs = response.xpath("//article//p//text()").getall()
         text = " ".join([p.strip() for p in paragraphs if p and p.strip()])
 
-        # fallback, falls article-tag fehlt: alle p-tags
+        # fallback, if article-tag missing: all p-tags
         if not text:
             paragraphs = response.xpath("//p//text()").getall()
             text = " ".join([p.strip() for p in paragraphs if p and p.strip()])
@@ -81,7 +99,7 @@ class RssSpider(scrapy.Spider):
 
     @staticmethod
     def _best_summary(entry):
-        # feedparser: summary oder content:encoded
+        # feedparser: summary or content:encoded
         summary = getattr(entry, "summary", None)
         if summary:
             return summary
