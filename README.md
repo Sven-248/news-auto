@@ -1,5 +1,7 @@
 # NewsAuto
 
+![Dashboard](docs/dashboard.png)
+
 NewsAuto is a local-first news ingestion and analysis prototype.
 
 It crawls German news sources via RSS, stores articles as JSONL, analyzes each article with a local LLM through Ollama, and displays the results in a Streamlit dashboard.
