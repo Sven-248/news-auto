@@ -6,18 +6,23 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+ENV_FILE = ".env.test"
+load_dotenv(ENV_FILE)
 
 DATA_PATH = Path(os.getenv("DASHBOARD_DATA_PATH", "data/analyzed_news.jsonl"))
+print(DATA_PATH)
 
 
+@st.cache_data
 def load_jsonl(path: Path) -> pd.DataFrame:
     rows = []
 
-    if not path.exists():
+    file_path = Path(path)
+
+    if not file_path.exists():
         return pd.DataFrame()
 
-    with path.open("r", encoding="utf-8") as f:
+    with file_path.open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -66,7 +71,7 @@ st.caption(
     "Lokale Analyse von Nachrichtenartikeln: Zusammenfassung, Thema und politische Einordnung."
 )
 
-df = load_jsonl(DATA_PATH)
+df = load_jsonl(str(DATA_PATH))
 
 if df.empty:
     st.warning(
@@ -75,7 +80,9 @@ if df.empty:
     st.stop()
 
 # Normalisierung
-df["classification"] = df["classification"].fillna("unklar").str.lower()
+df["classification"] = (
+    df["classification"].fillna("unklar").astype(str).str.lower().str.strip()
+)
 df["source"] = df["source"].fillna("unknown")
 df["topic"] = df["topic"].fillna("Unklar")
 df["confidence"] = pd.to_numeric(df["confidence"], errors="coerce").fillna(0.0)
@@ -88,10 +95,10 @@ selected_sources = st.sidebar.multiselect("Quellen", sources, default=sources)
 
 classes = ["links", "mitte", "rechts", "unklar"]
 available_classes = [c for c in classes if c in df["classification"].unique()]
-selected_classes = st.sidebar.multiselect(
+selected_class = st.sidebar.radio(
     "Politische Einordnung",
-    available_classes,
-    default=available_classes,
+    ["alle", "links", "mitte", "rechts", "unklar"],
+    index=0,
 )
 
 topics = sorted(df["topic"].dropna().unique())
@@ -110,7 +117,8 @@ search = st.sidebar.text_input("Suche in Titel / Zusammenfassung / Begründung")
 filtered = df.copy()
 
 filtered = filtered[filtered["source"].isin(selected_sources)]
-filtered = filtered[filtered["classification"].isin(selected_classes)]
+if selected_class != "alle":
+    filtered = filtered[filtered["classification"] == selected_class]
 filtered = filtered[filtered["topic"].isin(selected_topics)]
 filtered = filtered[filtered["confidence"] >= min_conf]
 
@@ -173,7 +181,17 @@ sort_option = st.selectbox(
     ],
 )
 
+max_items = st.sidebar.slider(
+    "Max. Artikel anzeigen",
+    min_value=10,
+    max_value=300,
+    value=50,
+    step=10,
+)
+
 display_df = filtered.copy()
+
+display_df = display_df.head(max_items)
 
 if sort_option == "Neueste zuerst":
     display_df["published_sort"] = pd.to_datetime(
