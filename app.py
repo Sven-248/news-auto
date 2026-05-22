@@ -548,12 +548,6 @@ def render_political_dashboard(df: pd.DataFrame) -> None:
                 st.link_button("Original öffnen", url)
 
 
-st.set_page_config(
-    page_title="NewsAuto Dashboard",
-    page_icon="📰",
-    layout="wide",
-)
-
 st.sidebar.title("NewsAuto")
 
 selected_view = st.sidebar.radio(
