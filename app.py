@@ -9,6 +9,10 @@ from dotenv import load_dotenv
 ENV_FILE = ".env.test"
 load_dotenv(ENV_FILE)
 
+POLIT_DATA_PATH = Path(os.getenv("POLIT_DASHBOARD_DATA_PATH", " "))
+
+TECH_DATA_PATH = Path(os.getenv("TECH_DASHBOARD_DATA_PATH", " "))
+
 DATA_PATH = Path(os.getenv("DASHBOARD_DATA_PATH", "data/analyzed_news.jsonl"))
 print(DATA_PATH)
 
@@ -107,14 +111,26 @@ def render_tech_dashboard(df: pd.DataFrame) -> None:
     st.sidebar.header("Tech Filter")
 
     sources = sorted(df["source"].unique())
-    selected_sources = st.sidebar.multiselect("Quellen", sources, default=sources)
-
+    selected_sources = st.sidebar.multiselect(
+        "Quellen",
+        sources,
+        default=sources,
+        key="tech_sources",
+    )
     topics = sorted(df["primary_topic"].dropna().unique())
-    selected_topics = st.sidebar.multiselect("Themen", topics, default=topics)
+    selected_topics = st.sidebar.multiselect(
+        "Themen",
+        topics,
+        default=topics,
+        key="tech_topics",
+    )
 
     article_types = sorted(df["article_type"].dropna().unique())
     selected_article_types = st.sidebar.multiselect(
-        "Artikeltyp", article_types, default=article_types
+        "Artikeltyp",
+        article_types,
+        default=article_types,
+        key="tech_article_types",
     )
 
     practicality_values = ["high", "medium", "low", "none"]
@@ -125,6 +141,7 @@ def render_tech_dashboard(df: pd.DataFrame) -> None:
         "Praktische Anwendbarkeit",
         available_practicality,
         default=available_practicality,
+        key="tech_practicality",
     )
 
     urgency_values = ["critical", "high", "medium", "low"]
@@ -133,12 +150,14 @@ def render_tech_dashboard(df: pd.DataFrame) -> None:
         "Dringlichkeit",
         available_urgency,
         default=available_urgency,
+        key="tech_urgency",
     )
 
     action_filter = st.sidebar.radio(
         "Handlung erforderlich",
         ["alle", "ja", "nein"],
         index=0,
+        key="tech_action_filter",
     )
 
     min_conf = st.sidebar.slider(
@@ -147,9 +166,13 @@ def render_tech_dashboard(df: pd.DataFrame) -> None:
         max_value=1.0,
         value=0.0,
         step=0.05,
+        key="tech_min_confidence",
     )
 
-    search = st.sidebar.text_input("Suche")
+    search = st.sidebar.text_input(
+        "Suche",
+        key="tech_search",
+    )
 
     filtered = df.copy()
 
@@ -236,6 +259,7 @@ def render_tech_dashboard(df: pd.DataFrame) -> None:
         max_value=300,
         value=50,
         step=10,
+        key="tech_max_items",
     )
 
     sort_option = st.selectbox(
@@ -364,7 +388,12 @@ def render_political_dashboard(df: pd.DataFrame) -> None:
     st.sidebar.header("Filter")
 
     sources = sorted(df["source"].unique())
-    selected_sources = st.sidebar.multiselect("Quellen", sources, default=sources)
+    selected_sources = st.sidebar.multiselect(
+        "Quellen",
+        sources,
+        default=sources,
+        key="polit_sources",
+    )
 
     classes = ["links", "mitte", "rechts", "unklar"]
     available_classes = [c for c in classes if c in df["classification"].unique()]
@@ -372,10 +401,16 @@ def render_political_dashboard(df: pd.DataFrame) -> None:
         "Politische Einordnung",
         ["alle", "links", "mitte", "rechts", "unklar"],
         index=0,
+        key="polit_class_filter",
     )
 
     topics = sorted(df["topic"].dropna().unique())
-    selected_topics = st.sidebar.multiselect("Themen", topics, default=topics)
+    selected_topics = st.sidebar.multiselect(
+        "Themen",
+        topics,
+        default=topics,
+        key="polit_topics",
+    )
 
     min_conf = st.sidebar.slider(
         "Minimale Confidence",
@@ -383,9 +418,13 @@ def render_political_dashboard(df: pd.DataFrame) -> None:
         max_value=1.0,
         value=0.0,
         step=0.05,
+        key="polit_min_confidence",
     )
 
-    search = st.sidebar.text_input("Suche in Titel / Zusammenfassung / Begründung")
+    search = st.sidebar.text_input(
+        "Suche in Titel / Zusammenfassung / Begründung",
+        key="polit_search",
+    )
 
     filtered = df.copy()
 
@@ -443,7 +482,6 @@ def render_political_dashboard(df: pd.DataFrame) -> None:
 
     st.divider()
 
-    # Sortierung
     sort_option = st.selectbox(
         "Sortierung",
         [
@@ -460,6 +498,7 @@ def render_political_dashboard(df: pd.DataFrame) -> None:
         max_value=300,
         value=50,
         step=10,
+        key="polit_max_items",
     )
 
     display_df = filtered.copy()
@@ -511,27 +550,35 @@ def render_political_dashboard(df: pd.DataFrame) -> None:
                 st.link_button("Original öffnen", url)
 
 
-df = load_jsonl(str(DATA_PATH))
-
-if df.empty:
-    st.warning("Keine analysierten Daten gefunden.")
-    st.stop()
-
-df["analysis_profile"] = (
-    df["analysis_profile"].fillna("political").astype(str).str.lower().str.strip()
+st.set_page_config(
+    page_title="NewsAuto Dashboard",
+    page_icon="📰",
+    layout="wide",
 )
 
-available_profiles = sorted(df["analysis_profile"].unique())
+st.sidebar.title("NewsAuto")
 
-selected_profile = st.sidebar.radio(
-    "Analyseprofil",
-    available_profiles,
+selected_view = st.sidebar.radio(
+    "Dashboard",
+    ["Polit", "Tech"],
     index=0,
+    key="dashboard_view",
 )
 
-df = df[df["analysis_profile"] == selected_profile]
+if selected_view == "Polit":
+    polit_df = load_jsonl(str(POLIT_DATA_PATH))
 
-if selected_profile == "tech":
-    render_tech_dashboard(df)
-else:
-    render_political_dashboard(df)
+    if polit_df.empty:
+        st.warning(f"Keine Polit-Daten gefunden: {POLIT_DATA_PATH}")
+        st.stop()
+
+    render_political_dashboard(polit_df)
+
+elif selected_view == "Tech":
+    tech_df = load_jsonl(str(TECH_DATA_PATH))
+
+    if tech_df.empty:
+        st.warning(f"Keine Tech-Daten gefunden: {TECH_DATA_PATH}")
+        st.stop()
+
+    render_tech_dashboard(tech_df)

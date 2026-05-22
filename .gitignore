@@ -28,6 +28,10 @@ data/
 *.sqlite
 *.sqlite3
 
+# Keep demo JSONL files
+!demo/
+!demo/*.jsonl
+
 # Models
 models/
 *.gguf
