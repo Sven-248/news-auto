@@ -14,7 +14,12 @@ POLIT_DATA_PATH = Path(os.getenv("POLIT_DASHBOARD_DATA_PATH", " "))
 TECH_DATA_PATH = Path(os.getenv("TECH_DASHBOARD_DATA_PATH", " "))
 
 DATA_PATH = Path(os.getenv("DASHBOARD_DATA_PATH", "data/analyzed_news.jsonl"))
-print(DATA_PATH)
+
+st.set_page_config(
+    page_title="NewsAuto Dashboard",
+    page_icon="📰",
+    layout="wide",
+)
 
 
 @st.cache_data
@@ -84,13 +89,6 @@ def safe_text(value, fallback=""):
     if value is None:
         return fallback
     return str(value)
-
-
-st.set_page_config(
-    page_title="NewsAuto Dashboard",
-    page_icon="📰",
-    layout="wide",
-)
 
 
 def render_tech_dashboard(df: pd.DataFrame) -> None:
