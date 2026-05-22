@@ -60,25 +60,15 @@ class DedupePipeline:
 class JsonlExportPipeline:
     def open_spider(self, spider):
         os.makedirs("data", exist_ok=True)
-        self.first = True
-        self.f = open("data/news.json", "w", encoding="utf-8")
-        self.f.write("[\n")
+        self.f = open(
+            f"data/news_{spider.only_source or 'all'}.jsonl", "w", encoding="utf-8"
+        )
 
     def close_spider(self, spider):
-        self.f.write("\n]\n")
         self.f.close()
 
     def process_item(self, item, spider):
         obj = dict(item)
 
-        # defensive: nie kaputtes JSON schreiben
-        for k, v in obj.items():
-            if v is None:
-                obj[k] = None
-
-        if not self.first:
-            self.f.write(",\n")
-        self.f.write(json.dumps(obj, ensure_ascii=False))
-        self.first = False
-
+        self.f.write(json.dumps(obj, ensure_ascii=False) + "\n")
         return item

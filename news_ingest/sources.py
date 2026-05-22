@@ -50,4 +50,12 @@ SOURCES = {
             "https://www.n-tv.de/wirtschaft/rss",
         ],
     },
+    "heise": {
+        "language": "de",
+        "rss": [
+            "https://www.heise.de/rss/heise-atom.xml",
+            "https://www.heise.de/security/rss/news-atom.xml",
+            "https://www.heise.de/developer/rss/news-atom.xml",
+        ],
+    },
 }
