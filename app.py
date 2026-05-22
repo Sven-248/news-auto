@@ -41,13 +41,35 @@ def load_jsonl(path: Path) -> pd.DataFrame:
                     "title": item.get("title"),
                     "url": item.get("url") or item.get("canonical_url"),
                     "published_at": item.get("published_at"),
+                    "section": item.get("section"),
+                    "analysis_profile": item.get("analysis_profile")
+                    or analysis.get("analysis_profile", "political"),
+                    # Shared
                     "summary": analysis.get("summary"),
-                    "classification": analysis.get(
-                        "political_classification", "unklar"
-                    ),
                     "confidence": analysis.get("confidence", 0.0),
                     "reasoning": analysis.get("reasoning"),
                     "topic": analysis.get("topic"),
+                    # Political
+                    "classification": analysis.get(
+                        "political_classification", "unklar"
+                    ),
+                    "main_political_subject": analysis.get("main_political_subject"),
+                    "article_framing_orientation": analysis.get(
+                        "article_framing_orientation"
+                    ),
+                    # Tech
+                    "article_type": analysis.get("article_type"),
+                    "primary_topic": analysis.get("primary_topic")
+                    or analysis.get("topic"),
+                    "practicality": analysis.get("practicality"),
+                    "technology_maturity": analysis.get("technology_maturity"),
+                    "target_audience": analysis.get("target_audience", []),
+                    "urgency": analysis.get("urgency"),
+                    "action_required": analysis.get("action_required"),
+                    "recommended_action": analysis.get("recommended_action"),
+                    "opinion_level": analysis.get("opinion_level"),
+                    "novelty": analysis.get("novelty"),
+                    "key_technologies": analysis.get("key_technologies", []),
                 }
             )
 
@@ -66,173 +88,443 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("NewsAuto Dashboard")
-st.caption(
-    "Lokale Analyse von Nachrichtenartikeln: Zusammenfassung, Thema und politische Einordnung."
-)
+
+def render_tech_dashboard(df: pd.DataFrame) -> None:
+    st.title("NewsAuto – Tech Dashboard")
+    st.caption(
+        "Analyse von Technologie- und IT-Artikeln nach Thema, Praxisnutzen, Dringlichkeit und Zielgruppe."
+    )
+
+    df = df.copy()
+
+    df["source"] = df["source"].fillna("unknown")
+    df["primary_topic"] = df["primary_topic"].fillna("other")
+    df["article_type"] = df["article_type"].fillna("other")
+    df["practicality"] = df["practicality"].fillna("none")
+    df["urgency"] = df["urgency"].fillna("low")
+    df["confidence"] = pd.to_numeric(df["confidence"], errors="coerce").fillna(0.0)
+
+    st.sidebar.header("Tech Filter")
+
+    sources = sorted(df["source"].unique())
+    selected_sources = st.sidebar.multiselect("Quellen", sources, default=sources)
+
+    topics = sorted(df["primary_topic"].dropna().unique())
+    selected_topics = st.sidebar.multiselect("Themen", topics, default=topics)
+
+    article_types = sorted(df["article_type"].dropna().unique())
+    selected_article_types = st.sidebar.multiselect(
+        "Artikeltyp", article_types, default=article_types
+    )
+
+    practicality_values = ["high", "medium", "low", "none"]
+    available_practicality = [
+        p for p in practicality_values if p in df["practicality"].unique()
+    ]
+    selected_practicality = st.sidebar.multiselect(
+        "Praktische Anwendbarkeit",
+        available_practicality,
+        default=available_practicality,
+    )
+
+    urgency_values = ["critical", "high", "medium", "low"]
+    available_urgency = [u for u in urgency_values if u in df["urgency"].unique()]
+    selected_urgency = st.sidebar.multiselect(
+        "Dringlichkeit",
+        available_urgency,
+        default=available_urgency,
+    )
+
+    action_filter = st.sidebar.radio(
+        "Handlung erforderlich",
+        ["alle", "ja", "nein"],
+        index=0,
+    )
+
+    min_conf = st.sidebar.slider(
+        "Minimale Confidence",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.0,
+        step=0.05,
+    )
+
+    search = st.sidebar.text_input("Suche")
+
+    filtered = df.copy()
+
+    if selected_sources:
+        filtered = filtered[filtered["source"].isin(selected_sources)]
+
+    if selected_topics:
+        filtered = filtered[filtered["primary_topic"].isin(selected_topics)]
+
+    if selected_article_types:
+        filtered = filtered[filtered["article_type"].isin(selected_article_types)]
+
+    if selected_practicality:
+        filtered = filtered[filtered["practicality"].isin(selected_practicality)]
+
+    if selected_urgency:
+        filtered = filtered[filtered["urgency"].isin(selected_urgency)]
+
+    if action_filter == "ja":
+        filtered = filtered[filtered["action_required"] == True]
+    elif action_filter == "nein":
+        filtered = filtered[filtered["action_required"] == False]
+
+    filtered = filtered[filtered["confidence"] >= min_conf]
+
+    if search:
+        q = search.lower()
+        filtered = filtered[
+            filtered.apply(
+                lambda row: q in str(row.get("title", "")).lower()
+                or q in str(row.get("summary", "")).lower()
+                or q in str(row.get("reasoning", "")).lower()
+                or q in str(row.get("primary_topic", "")).lower()
+                or q in str(row.get("key_technologies", "")).lower(),
+                axis=1,
+            )
+        ]
+
+    total = len(filtered)
+    action_required_count = int((filtered["action_required"] == True).sum())
+    high_urgency_count = int(filtered["urgency"].isin(["high", "critical"]).sum())
+    high_practicality_count = int((filtered["practicality"] == "high").sum())
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Artikel", total)
+    col2.metric("Action Required", action_required_count)
+    col3.metric("High/Critical Urgency", high_urgency_count)
+    col4.metric("High Practicality", high_practicality_count)
+
+    st.divider()
+
+    chart_col1, chart_col2 = st.columns(2)
+
+    with chart_col1:
+        st.subheader("Themen")
+        st.bar_chart(filtered["primary_topic"].value_counts())
+
+    with chart_col2:
+        st.subheader("Artikeltypen")
+        st.bar_chart(filtered["article_type"].value_counts())
+
+    chart_col3, chart_col4 = st.columns(2)
+
+    with chart_col3:
+        st.subheader("Praktische Anwendbarkeit")
+        st.bar_chart(filtered["practicality"].value_counts())
+
+    with chart_col4:
+        st.subheader("Dringlichkeit")
+        st.bar_chart(filtered["urgency"].value_counts())
+
+    st.divider()
+
+    max_items = st.sidebar.slider(
+        "Max. Artikel anzeigen",
+        min_value=10,
+        max_value=300,
+        value=50,
+        step=10,
+    )
+
+    sort_option = st.selectbox(
+        "Sortierung",
+        [
+            "Neueste zuerst",
+            "Höchste Dringlichkeit",
+            "Höchste Confidence",
+            "Praktische Anwendbarkeit",
+        ],
+    )
+
+    display_df = filtered.copy()
+
+    if sort_option == "Neueste zuerst":
+        display_df["published_sort"] = pd.to_datetime(
+            display_df["published_at"], errors="coerce"
+        )
+        display_df = display_df.sort_values("published_sort", ascending=False)
+
+    elif sort_option == "Höchste Confidence":
+        display_df = display_df.sort_values("confidence", ascending=False)
+
+    elif sort_option == "Höchste Dringlichkeit":
+        urgency_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+        display_df["urgency_score"] = display_df["urgency"].map(urgency_order).fillna(0)
+        display_df = display_df.sort_values("urgency_score", ascending=False)
+
+    elif sort_option == "Praktische Anwendbarkeit":
+        practicality_order = {"high": 4, "medium": 3, "low": 2, "none": 1}
+        display_df["practicality_score"] = (
+            display_df["practicality"].map(practicality_order).fillna(0)
+        )
+        display_df = display_df.sort_values("practicality_score", ascending=False)
+
+    display_df = display_df.head(max_items)
+
+    st.subheader("Tech-Artikel")
+
+    for _, row in display_df.iterrows():
+        title = str(row.get("title") or "Ohne Titel")
+        source = str(row.get("source") or "unknown")
+        published_at = str(row.get("published_at") or "")
+        url = str(row.get("url") or "")
+
+        summary = str(row.get("summary") or "Keine Zusammenfassung vorhanden.")
+        reasoning = str(row.get("reasoning") or "Keine Begründung vorhanden.")
+
+        article_type = str(row.get("article_type") or "other")
+        primary_topic = str(row.get("primary_topic") or "other")
+        practicality = str(row.get("practicality") or "none")
+        urgency = str(row.get("urgency") or "low")
+        confidence = float(row.get("confidence") or 0.0)
+        action_required = row.get("action_required")
+        recommended_action = row.get("recommended_action")
+
+        key_technologies = row.get("key_technologies") or []
+        target_audience = row.get("target_audience") or []
+
+        with st.container(border=True):
+            top_left, top_right = st.columns([4, 1])
+
+            with top_left:
+                st.subheader(title)
+                st.caption(f"{source} · {published_at}")
+
+            with top_right:
+                st.metric("Confidence", f"{confidence:.2f}")
+
+            badge_line = (
+                f"**Type:** `{article_type}` · "
+                f"**Topic:** `{primary_topic}` · "
+                f"**Practicality:** `{practicality}` · "
+                f"**Urgency:** `{urgency}`"
+            )
+            st.markdown(badge_line)
+
+            if action_required is True:
+                st.warning("Action required")
+                if recommended_action:
+                    st.write(f"Empfohlene Aktion: {recommended_action}")
+            elif action_required is False:
+                st.info("Keine direkte Handlung erforderlich")
+
+            st.write(summary)
+
+            if key_technologies:
+                st.write(
+                    "**Technologien / Produkte:** "
+                    + ", ".join(map(str, key_technologies))
+                )
+
+            if target_audience:
+                st.write("**Zielgruppen:** " + ", ".join(map(str, target_audience)))
+
+            with st.expander("Begründung anzeigen"):
+                st.write(reasoning)
+
+            if url:
+                st.link_button("Original öffnen", url)
+
+
+def render_political_dashboard(df: pd.DataFrame) -> None:
+    st.title("NewsAuto Dashboard")
+    st.caption(
+        "Lokale Analyse von Nachrichtenartikeln: Zusammenfassung, Thema und politische Einordnung."
+    )
+
+    df = df.copy()
+
+    if df.empty:
+        st.warning("Keine politischen Artikel gefunden.")
+        st.stop()
+
+    df["analysis_profile"] = (
+        df["analysis_profile"].fillna("political").astype(str).str.lower().str.strip()
+    )
+    df["classification"] = (
+        df["classification"].fillna("unklar").astype(str).str.lower().str.strip()
+    )
+    df["source"] = df["source"].fillna("unknown")
+    df["topic"] = df["topic"].fillna("Unklar")
+    df["confidence"] = pd.to_numeric(df["confidence"], errors="coerce").fillna(0.0)
+
+    # Sidebar
+    st.sidebar.header("Filter")
+
+    sources = sorted(df["source"].unique())
+    selected_sources = st.sidebar.multiselect("Quellen", sources, default=sources)
+
+    classes = ["links", "mitte", "rechts", "unklar"]
+    available_classes = [c for c in classes if c in df["classification"].unique()]
+    selected_class = st.sidebar.radio(
+        "Politische Einordnung",
+        ["alle", "links", "mitte", "rechts", "unklar"],
+        index=0,
+    )
+
+    topics = sorted(df["topic"].dropna().unique())
+    selected_topics = st.sidebar.multiselect("Themen", topics, default=topics)
+
+    min_conf = st.sidebar.slider(
+        "Minimale Confidence",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.0,
+        step=0.05,
+    )
+
+    search = st.sidebar.text_input("Suche in Titel / Zusammenfassung / Begründung")
+
+    filtered = df.copy()
+
+    filtered = filtered[filtered["source"].isin(selected_sources)]
+    if selected_class != "alle":
+        filtered = filtered[filtered["classification"] == selected_class]
+    filtered = filtered[filtered["topic"].isin(selected_topics)]
+    filtered = filtered[filtered["confidence"] >= min_conf]
+
+    if search:
+        q = search.lower()
+        filtered = filtered[
+            filtered.apply(
+                lambda row: q in safe_text(row.get("title")).lower()
+                or q in safe_text(row.get("summary")).lower()
+                or q in safe_text(row.get("reasoning")).lower()
+                or q in safe_text(row.get("topic")).lower(),
+                axis=1,
+            )
+        ]
+
+    # KPIs
+    total = len(filtered)
+    left_count = int((filtered["classification"] == "links").sum())
+    center_count = int((filtered["classification"] == "mitte").sum())
+    right_count = int((filtered["classification"] == "rechts").sum())
+    unclear_count = int((filtered["classification"] == "unklar").sum())
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("Artikel", total)
+    col2.metric("Links", left_count)
+    col3.metric("Mitte", center_count)
+    col4.metric("Rechts", right_count)
+    col5.metric("Unklar", unclear_count)
+
+    st.divider()
+
+    # Charts
+    chart_col1, chart_col2 = st.columns(2)
+
+    with chart_col1:
+        st.subheader("Einordnung")
+        class_counts = (
+            filtered["classification"]
+            .value_counts()
+            .reindex(["links", "mitte", "rechts", "unklar"])
+            .fillna(0)
+        )
+        st.bar_chart(class_counts)
+
+    with chart_col2:
+        st.subheader("Quellen")
+        source_counts = filtered["source"].value_counts()
+        st.bar_chart(source_counts)
+
+    st.divider()
+
+    # Sortierung
+    sort_option = st.selectbox(
+        "Sortierung",
+        [
+            "Neueste zuerst",
+            "Höchste Confidence",
+            "Quelle",
+            "Einordnung",
+        ],
+    )
+
+    max_items = st.sidebar.slider(
+        "Max. Artikel anzeigen",
+        min_value=10,
+        max_value=300,
+        value=50,
+        step=10,
+    )
+
+    display_df = filtered.copy()
+
+    display_df = display_df.head(max_items)
+
+    if sort_option == "Neueste zuerst":
+        display_df["published_sort"] = pd.to_datetime(
+            display_df["published_at"], errors="coerce"
+        )
+        display_df = display_df.sort_values("published_sort", ascending=False)
+    elif sort_option == "Höchste Confidence":
+        display_df = display_df.sort_values("confidence", ascending=False)
+    elif sort_option == "Quelle":
+        display_df = display_df.sort_values("source")
+    elif sort_option == "Einordnung":
+        display_df = display_df.sort_values("classification")
+
+    # Cards
+    st.subheader("Artikel")
+
+    for _, row in display_df.iterrows():
+        title = safe_text(row.get("title"), "Ohne Titel")
+        source = safe_text(row.get("source"), "unknown")
+        published_at = safe_text(row.get("published_at"), "")
+        classification = safe_text(row.get("classification"), "unklar")
+        confidence = float(row.get("confidence") or 0.0)
+        topic = safe_text(row.get("topic"), "Unklar")
+        summary = safe_text(row.get("summary"), "Keine Zusammenfassung vorhanden.")
+        reasoning = safe_text(row.get("reasoning"), "Keine Begründung vorhanden.")
+        url = safe_text(row.get("url"))
+
+        with st.container(border=True):
+            top_left, top_right = st.columns([4, 1])
+
+            with top_left:
+                st.subheader(title)
+                st.caption(f"{source} · {published_at} · Thema: {topic}")
+
+            with top_right:
+                st.metric(classification.upper(), f"{confidence:.2f}")
+
+            st.write(summary)
+
+            with st.expander("Begründung anzeigen"):
+                st.write(reasoning)
+
+            if url:
+                st.link_button("Original öffnen", url)
+
 
 df = load_jsonl(str(DATA_PATH))
 
 if df.empty:
-    st.warning(
-        "Keine analysierten Daten gefunden. Erwartet wird: data/analyzed_news.jsonl"
-    )
+    st.warning("Keine analysierten Daten gefunden.")
     st.stop()
 
-# Normalisierung
-df["classification"] = (
-    df["classification"].fillna("unklar").astype(str).str.lower().str.strip()
+df["analysis_profile"] = (
+    df["analysis_profile"].fillna("political").astype(str).str.lower().str.strip()
 )
-df["source"] = df["source"].fillna("unknown")
-df["topic"] = df["topic"].fillna("Unklar")
-df["confidence"] = pd.to_numeric(df["confidence"], errors="coerce").fillna(0.0)
 
-# Sidebar
-st.sidebar.header("Filter")
+available_profiles = sorted(df["analysis_profile"].unique())
 
-sources = sorted(df["source"].unique())
-selected_sources = st.sidebar.multiselect("Quellen", sources, default=sources)
-
-classes = ["links", "mitte", "rechts", "unklar"]
-available_classes = [c for c in classes if c in df["classification"].unique()]
-selected_class = st.sidebar.radio(
-    "Politische Einordnung",
-    ["alle", "links", "mitte", "rechts", "unklar"],
+selected_profile = st.sidebar.radio(
+    "Analyseprofil",
+    available_profiles,
     index=0,
 )
 
-topics = sorted(df["topic"].dropna().unique())
-selected_topics = st.sidebar.multiselect("Themen", topics, default=topics)
+df = df[df["analysis_profile"] == selected_profile]
 
-min_conf = st.sidebar.slider(
-    "Minimale Confidence",
-    min_value=0.0,
-    max_value=1.0,
-    value=0.0,
-    step=0.05,
-)
-
-search = st.sidebar.text_input("Suche in Titel / Zusammenfassung / Begründung")
-
-filtered = df.copy()
-
-filtered = filtered[filtered["source"].isin(selected_sources)]
-if selected_class != "alle":
-    filtered = filtered[filtered["classification"] == selected_class]
-filtered = filtered[filtered["topic"].isin(selected_topics)]
-filtered = filtered[filtered["confidence"] >= min_conf]
-
-if search:
-    q = search.lower()
-    filtered = filtered[
-        filtered.apply(
-            lambda row: q in safe_text(row.get("title")).lower()
-            or q in safe_text(row.get("summary")).lower()
-            or q in safe_text(row.get("reasoning")).lower()
-            or q in safe_text(row.get("topic")).lower(),
-            axis=1,
-        )
-    ]
-
-# KPIs
-total = len(filtered)
-left_count = int((filtered["classification"] == "links").sum())
-center_count = int((filtered["classification"] == "mitte").sum())
-right_count = int((filtered["classification"] == "rechts").sum())
-unclear_count = int((filtered["classification"] == "unklar").sum())
-
-col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("Artikel", total)
-col2.metric("Links", left_count)
-col3.metric("Mitte", center_count)
-col4.metric("Rechts", right_count)
-col5.metric("Unklar", unclear_count)
-
-st.divider()
-
-# Charts
-chart_col1, chart_col2 = st.columns(2)
-
-with chart_col1:
-    st.subheader("Einordnung")
-    class_counts = (
-        filtered["classification"]
-        .value_counts()
-        .reindex(["links", "mitte", "rechts", "unklar"])
-        .fillna(0)
-    )
-    st.bar_chart(class_counts)
-
-with chart_col2:
-    st.subheader("Quellen")
-    source_counts = filtered["source"].value_counts()
-    st.bar_chart(source_counts)
-
-st.divider()
-
-# Sortierung
-sort_option = st.selectbox(
-    "Sortierung",
-    [
-        "Neueste zuerst",
-        "Höchste Confidence",
-        "Quelle",
-        "Einordnung",
-    ],
-)
-
-max_items = st.sidebar.slider(
-    "Max. Artikel anzeigen",
-    min_value=10,
-    max_value=300,
-    value=50,
-    step=10,
-)
-
-display_df = filtered.copy()
-
-display_df = display_df.head(max_items)
-
-if sort_option == "Neueste zuerst":
-    display_df["published_sort"] = pd.to_datetime(
-        display_df["published_at"], errors="coerce"
-    )
-    display_df = display_df.sort_values("published_sort", ascending=False)
-elif sort_option == "Höchste Confidence":
-    display_df = display_df.sort_values("confidence", ascending=False)
-elif sort_option == "Quelle":
-    display_df = display_df.sort_values("source")
-elif sort_option == "Einordnung":
-    display_df = display_df.sort_values("classification")
-
-# Cards
-st.subheader("Artikel")
-
-for _, row in display_df.iterrows():
-    title = safe_text(row.get("title"), "Ohne Titel")
-    source = safe_text(row.get("source"), "unknown")
-    published_at = safe_text(row.get("published_at"), "")
-    classification = safe_text(row.get("classification"), "unklar")
-    confidence = float(row.get("confidence") or 0.0)
-    topic = safe_text(row.get("topic"), "Unklar")
-    summary = safe_text(row.get("summary"), "Keine Zusammenfassung vorhanden.")
-    reasoning = safe_text(row.get("reasoning"), "Keine Begründung vorhanden.")
-    url = safe_text(row.get("url"))
-
-    with st.container(border=True):
-        top_left, top_right = st.columns([4, 1])
-
-        with top_left:
-            st.subheader(title)
-            st.caption(f"{source} · {published_at} · Thema: {topic}")
-
-        with top_right:
-            st.metric(classification.upper(), f"{confidence:.2f}")
-
-        st.write(summary)
-
-        with st.expander("Begründung anzeigen"):
-            st.write(reasoning)
-
-        if url:
-            st.link_button("Original öffnen", url)
+if selected_profile == "tech":
+    render_tech_dashboard(df)
+else:
+    render_political_dashboard(df)
