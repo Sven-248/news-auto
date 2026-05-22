@@ -1,6 +1,6 @@
 # NewsAuto
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://sven-248-news-auto-app-featurepublic-demo-dashboard-fssa60.streamlit.app)
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://news-auto-test.streamlit.app/)
 
 NewsAuto is a local-first news ingestion and analysis prototype.
 
@@ -14,7 +14,7 @@ The project is intended as a portfolio and experimentation project for Python-ba
 
 A public demo version of the dashboard is available here:
 
-[Open NewsAuto Demo](https://sven-248-news-auto-app-featurepublic-demo-dashboard-fssa60.streamlit.app)
+[Open NewsAuto Demo](https://news-auto-test.streamlit.app/)
 The online demo uses static demo data from:
 
 - `demo/analyzed_demo_polit.jsonl`
