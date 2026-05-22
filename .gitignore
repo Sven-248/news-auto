@@ -17,6 +17,7 @@ ENV/
 
 # Environment / local config
 .env
+.env.test
 .env.local
 .env.*.local
 

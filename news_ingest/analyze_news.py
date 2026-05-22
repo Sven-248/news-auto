@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 import random
 import argparse
+from analysis_profiles import build_prompt
 
 ENV_FILE = ".env.test"
 load_dotenv(ENV_FILE)
@@ -53,54 +54,6 @@ def load_articles(path: Path):
             yield data
 
 
-def build_prompt(article: dict) -> str:
-    title = article.get("title") or ""
-    teaser = article.get("teaser") or ""
-    full_text = article.get("full_text") or ""
-
-    text = f"""
-Titel:
-{title}
-
-Teaser:
-{teaser}
-
-Artikeltext:
-{full_text}
-""".strip()
-
-    return f"""
-Du analysierst einen Nachrichtenartikel.
-
-Aufgaben:
-1. Fasse den Artikel neutral in 3-5 Sätzen zusammen.
-2. Ordne die politische Perspektive bzw. das Framing des Artikels ein: links, mitte, rechts oder unklar.
-Wichtig:
-- Ordne nicht danach ein, über welche Partei, Bewegung oder Position berichtet wird.
-- Ein Artikel über rechte Akteure ist nicht automatisch rechts.
-- Ein Artikel über linke Akteure ist nicht automatisch links.
-- Entscheidend ist, welche Perspektive, Wertung, Sprache, Problemdefinition und Lösungsvorstellung der Artikel selbst nahelegt.
-- Wenn der Artikel überwiegend neutral berichtet oder keine klare Perspektive erkennbar ist, wähle "mitte" oder "unklar".
-
-3. Begründe die Einordnung anhand von Sprache, Framing, Themengewichtung und Perspektive.
-4. Bewerte nicht die Quelle pauschal, sondern nur diesen einzelnen Artikel.
-
-Gib ausschließlich valides JSON zurück, ohne Markdown.
-
-Schema:
-{{
-  "summary": "...",
-  "political_classification": "links|mitte|rechts|unklar",
-  "confidence": 0.0,
-  "reasoning": "...",
-  "topic": "..."
-}}
-
-Artikel:
-{text}
-""".strip()
-
-
 def call_llm(prompt: str) -> dict:
     payload = {
         "model": MODEL,
@@ -144,13 +97,19 @@ def main():
     parser.add_argument(
         "--output", type=str, default=str(OUTPUT_PATH), help="Output JSONL path"
     )
+    parser.add_argument(
+        "--profile",
+        choices=["auto", "polit", "tech"],
+        default="auto",
+        help="Force an analysis profile or use automatic selection",
+    )
     args = parser.parse_args()
 
     check_ollama()
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
+    print(INPUT_PATH)
     articles = list(load_articles(INPUT_PATH))
     # print(f"Loaded articles: {len(articles)}")
 
@@ -178,7 +137,7 @@ def main():
 
             print(f"[{i}/{len(articles)}] analyzing: {article.get('title')}")
 
-            prompt = build_prompt(article)
+            profile, prompt = build_prompt(article)
 
             try:
                 analysis = call_llm(prompt)
@@ -197,6 +156,8 @@ def main():
                 "canonical_url": article.get("canonical_url"),
                 "title": article.get("title"),
                 "published_at": article.get("published_at"),
+                "section": article.get("section"),
+                "analysis_profile": profile,
                 "analysis": analysis,
             }
 
