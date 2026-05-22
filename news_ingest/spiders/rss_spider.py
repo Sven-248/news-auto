@@ -9,13 +9,19 @@ from news_ingest.sources import SOURCES
 class RssSpider(scrapy.Spider):
     name = "rss"
 
-    def __init__(self, source=None, *args, **kwargs):
+    def __init__(self, source=None, profile=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.only_source = source  # optional: crawl only a single source
+        self.only_source = source
+        self.only_profile = profile
 
     def start_requests(self):
         for source, cfg in SOURCES.items():
+            source_profile = cfg.get("profile", "news")
+
             if self.only_source and source != self.only_source:
+                continue
+
+            if self.only_profile and source_profile != self.only_profile:
                 continue
 
             for rss_url in cfg.get("rss", []):
@@ -26,6 +32,7 @@ class RssSpider(scrapy.Spider):
                         "source": source,
                         "language": cfg.get("language"),
                         "rss_url": rss_url,
+                        "profile": source_profile,
                     },
                 )
 
@@ -69,6 +76,7 @@ class RssSpider(scrapy.Spider):
                 fetched_at=datetime.now(timezone.utc).isoformat(),
                 language=response.meta.get("language"),
                 section=section,
+                profile=response.meta.get("profile"),
             )
 
             # easy way: fetch full text — if paywalled/blocked => full_text may remain short/empty

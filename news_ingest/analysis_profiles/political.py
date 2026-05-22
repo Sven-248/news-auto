@@ -18,7 +18,7 @@ Artikeltext:
 Du analysierst einen deutschsprachigen Nachrichtenartikel.
 
 Aufgaben:
-1. Fasse den Artikel neutral in 3-5 Sätzen zusammen.
+1. Fasse den Artikel neutral in 5-8 Sätzen zusammen.
 2. Bestimme das politische Hauptthema bzw. die hauptsächlich behandelte politische Richtung des Artikels.
 3. Ordne die politische Perspektive bzw. das Framing des Artikels ein: links, mitte, rechts oder unklar.
 4. Begründe die Einordnung anhand von Sprache, Framing, Themengewichtung, Problemdefinition, Wertung und Perspektive.

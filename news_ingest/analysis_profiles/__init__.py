@@ -2,6 +2,10 @@ from analysis_profiles import political, tech
 
 TECH_SOURCES = {
     "heise",
+    "golem",
+    "t3n",
+    "the_decoder",
+    "all_ai",
 }
 
 
@@ -22,7 +26,7 @@ def select_profile(article: dict) -> str:
     if section in TECH_SECTIONS:
         return "tech"
 
-    return "political"
+    return "polit"
 
 
 def build_prompt(article: dict) -> tuple[str, str]:
@@ -31,4 +35,4 @@ def build_prompt(article: dict) -> tuple[str, str]:
     if profile == "tech":
         return "tech", tech.build_prompt(article)
 
-    return "political", political.build_prompt(article)
+    return "polit", political.build_prompt(article)

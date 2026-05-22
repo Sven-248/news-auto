@@ -153,6 +153,13 @@ def render_tech_dashboard(df: pd.DataFrame) -> None:
 
     filtered = df.copy()
 
+    ai_topics = ["ai_ml", "llm", "ai_tools", "ai_research", "ai_business"]
+
+    ai_only = st.sidebar.checkbox("Nur AI/ML-Themen anzeigen")
+
+    if ai_only:
+        filtered = filtered[filtered["primary_topic"].isin(ai_topics)]
+
     if selected_sources:
         filtered = filtered[filtered["source"].isin(selected_sources)]
 

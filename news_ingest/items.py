@@ -9,11 +9,13 @@ class NewsItem(scrapy.Item):
     title = scrapy.Field()
     teaser = scrapy.Field()
 
-    published_at = scrapy.Field()  # ISO string (UTC wenn möglich)
-    fetched_at = scrapy.Field()  # ISO string (UTC)
+    published_at = scrapy.Field()
+    fetched_at = scrapy.Field()
 
     language = scrapy.Field()
-    section = scrapy.Field()  # optional
+    section = scrapy.Field()
 
-    full_text = scrapy.Field()  # optional (wenn öffentlich erreichbar)
+    full_text = scrapy.Field()
     content_hash = scrapy.Field()
+
+    profile = scrapy.Field()

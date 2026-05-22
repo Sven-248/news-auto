@@ -18,7 +18,7 @@ Artikeltext:
 Du analysierst einen deutschsprachigen Technologie-, IT- oder Wissenschaftsartikel.
 
 Aufgaben:
-1. Fasse den Artikel neutral in 3-5 Sätzen zusammen.
+1. Fasse den Artikel neutral in 5-8 Sätzen zusammen.
 2. Klassifiziere den Artikeltyp.
 3. Bestimme das technische Themengebiet.
 4. Bewerte die praktische Anwendbarkeit für Leser.
@@ -35,6 +35,13 @@ Wichtig:
 - Bei reinen Branchennews, Produktankündigungen oder Hintergrundtexten ist "action_required" meistens false.
 - Bei Sicherheitslücken, aktiven Angriffen, kritischen Updates oder rechtlichen Pflichten kann "urgency" high oder critical sein.
 
+Wenn der Artikel sich um künstliche Intelligenz dreht, unterscheide möglichst:
+- llm: Sprachmodelle, Chatbots, lokale Modelle, RAG, Agenten
+- ai_tools: konkrete KI-Tools oder Workflows
+- ai_research: Forschung, Papers, Benchmarks, Modellarchitekturen
+- ai_business: Unternehmen, Investments, Markt, Produktstrategie
+- law_policy: Regulierung, AI Act, Urheberrecht, Datenschutz
+
 Gib ausschließlich valides JSON zurück, ohne Markdown.
 
 Schema:
@@ -42,7 +49,8 @@ Schema:
   "summary": "...",
   "analysis_profile": "tech",
   "article_type": "news|analysis|opinion|review|tutorial|security_advisory|research|interview|other",
-  "topic": "security|ai_ml|software_development|cloud_infrastructure|hardware|operating_systems|open_source|privacy_data_protection|law_policy|consumer_tech|business_industry|science_research|mobility|gaming_entertainment|other",
+  "primary_topic": "security|ai_ml|llm|ai_tools|ai_research|ai_business|software_development|cloud_infrastructure|hardware|operating_systems|open_source|privacy_data_protection|law_policy|consumer_tech|business_industry|science_research|mobility|gaming_entertainment|other",
+  "secondary_topics": ["..."],
   "practicality": "high|medium|low|none",
   "technology_maturity": "experimental|emerging|production_ready|legacy|deprecated|unclear",
   "target_audience": ["developer", "admin", "security", "consumer", "management", "research"],

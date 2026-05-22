@@ -99,7 +99,7 @@ def main():
     )
     parser.add_argument(
         "--profile",
-        choices=["auto", "political", "tech"],
+        choices=["auto", "polit", "tech"],
         default="auto",
         help="Force an analysis profile or use automatic selection",
     )

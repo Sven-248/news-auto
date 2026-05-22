@@ -60,15 +60,30 @@ class DedupePipeline:
 class JsonlExportPipeline:
     def open_spider(self, spider):
         os.makedirs("data", exist_ok=True)
-        self.f = open(
-            f"data/news_{spider.only_source or 'all'}.jsonl", "w", encoding="utf-8"
-        )
+
+        if getattr(spider, "only_source", None):
+            source_part = spider.only_source
+
+            try:
+                from news_ingest.sources import SOURCES
+
+                profile_part = SOURCES.get(source_part, {}).get("profile", "news")
+            except Exception:
+                profile_part = "news"
+
+            filename = f"data/news_{profile_part}_{source_part}.jsonl"
+
+        elif getattr(spider, "only_profile", None):
+            filename = f"data/news_{spider.only_profile}.jsonl"
+
+        else:
+            filename = "data/news_all.jsonl"
+
+        self.f = open(filename, "w", encoding="utf-8")
 
     def close_spider(self, spider):
         self.f.close()
 
     def process_item(self, item, spider):
-        obj = dict(item)
-
-        self.f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+        self.f.write(json.dumps(dict(item), ensure_ascii=False) + "\n")
         return item
