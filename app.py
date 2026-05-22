@@ -9,9 +9,13 @@ from dotenv import load_dotenv
 ENV_FILE = ".env.test"
 load_dotenv(ENV_FILE)
 
-POLIT_DATA_PATH = Path(os.getenv("POLIT_DASHBOARD_DATA_PATH", " "))
+POLIT_DATA_PATH = Path(
+    os.getenv("POLIT_DASHBOARD_DATA_PATH", "demo/analyzed_demo_polit.jsonl")
+)
 
-TECH_DATA_PATH = Path(os.getenv("TECH_DASHBOARD_DATA_PATH", " "))
+TECH_DATA_PATH = Path(
+    os.getenv("TECH_DASHBOARD_DATA_PATH", "demo/analyzed_demo_tech.jsonl")
+)
 
 DATA_PATH = Path(os.getenv("DASHBOARD_DATA_PATH", "data/analyzed_news.jsonl"))
 
