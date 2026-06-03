@@ -5,6 +5,7 @@ from dateutil import parser as dateparser
 from datetime import timezone
 from w3lib.url import canonicalize_url
 from scrapy.exceptions import DropItem
+from news_ingest.db import get_connection, init_db, insert_article
 
 
 class NormalizePipeline:
@@ -86,4 +87,51 @@ class JsonlExportPipeline:
 
     def process_item(self, item, spider):
         self.f.write(json.dumps(dict(item), ensure_ascii=False) + "\n")
+        return item
+
+
+class DatabasePipeline:
+    def open_spider(self, spider):
+        use_database = os.getenv("USE_DATABASE", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+
+        self.enabled = use_database
+
+        if not self.enabled:
+            self.conn = None
+            return
+
+        self.conn = get_connection()
+        init_db(self.conn)
+
+        self.inserted = 0
+        self.duplicates = 0
+
+    def close_spider(self, spider):
+        if not self.enabled or self.conn is None:
+            return
+
+        spider.logger.info(
+            "DatabasePipeline finished: inserted=%s duplicates=%s",
+            self.inserted,
+            self.duplicates,
+        )
+
+        self.conn.close()
+
+    def process_item(self, item, spider):
+        if not self.enabled or self.conn is None:
+            return item
+
+        article_id, inserted = insert_article(self.conn, dict(item))
+
+        if inserted:
+            self.inserted += 1
+        else:
+            self.duplicates += 1
+
         return item

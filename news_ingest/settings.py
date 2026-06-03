@@ -31,6 +31,7 @@ ITEM_PIPELINES = {
     "news_ingest.pipelines.NormalizePipeline": 200,
     "news_ingest.pipelines.DedupePipeline": 300,
     "news_ingest.pipelines.JsonlExportPipeline": 900,
+    "news_ingest.pipelines.DatabasePipeline": 800,
 }
 
 LOG_LEVEL = "INFO"
