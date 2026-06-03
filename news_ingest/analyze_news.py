@@ -57,6 +57,32 @@ def load_articles(path: Path):
             yield data
 
 
+def load_analyzed_urls(path: Path) -> set[str]:
+    urls: set[str] = set()
+
+    if not path.exists():
+        return urls
+
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+
+            if not line:
+                continue
+
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            url = item.get("url") or item.get("canonical_url")
+
+            if url:
+                urls.add(url)
+
+    return urls
+
+
 def call_llm(prompt: str) -> dict:
     payload = {
         "model": MODEL,
@@ -130,7 +156,24 @@ def main():
 
     print(f"Loaded articles: {len(articles)}")
 
-    with OUTPUT_PATH.open("w", encoding="utf-8") as out:
+    already_analyzed_urls = load_analyzed_urls(output_path)
+    if already_analyzed_urls:
+        before = len(articles)
+        articles = [
+            article
+            for article in articles
+            if (article.get("url") or article.get("canonical_url"))
+            not in already_analyzed_urls
+        ]
+        skipped = before - len(articles)
+        print(f"Skipped already analyzed articles: {skipped}")
+        print(f"Remaining new articles: {len(articles)}")
+
+    if not articles:
+        print("No new articles to analyze.")
+        return
+
+    with OUTPUT_PATH.open("a", encoding="utf-8") as out:
         for i, article in enumerate(articles, start=1):
             text = (
                 article.get("full_text")
