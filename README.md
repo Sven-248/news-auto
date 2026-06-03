@@ -1,13 +1,13 @@
 # NewsAuto
 
-![NewsAuto Dashboard Preview](docs/dashboard_preview_polit.png)
 ![NewsAuto Tech Dashboard Preview](docs/dashboard_preview_tech.png)
 
 **Live Demo:** [Open NewsAuto Dashboard](https://news-auto.streamlit.app/)
 
-NewsAuto is a local-first news ingestion and analysis prototype.
+NewsAuto is a local-first technology news ingestion and analysis prototype.
 
-It crawls German news and technology sources via RSS, stores articles as JSONL, analyzes them with a local LLM through Ollama, and displays the results in a Streamlit dashboard.
+It crawls German technology and AI news sources via RSS, stores articles as JSONL, analyzes them with a local LLM through Ollama, and displays the results in a Streamlit dashboard.
+The codebase also supports additional analysis profiles, but the public demo focuses on the Tech/AI profile.
 
 The project is intended as a portfolio project for Python data pipelines, local LLM workflows, news analysis and lightweight dashboards.
 
@@ -259,7 +259,6 @@ The dashboard has separate views for:
 The online demo uses:
 
 ```text
-demo/analyzed_demo_polit.jsonl
 demo/analyzed_demo_tech.jsonl
 ```
 

@@ -19,6 +19,8 @@ TECH_DATA_PATH = Path(
 
 DATA_PATH = Path(os.getenv("DASHBOARD_DATA_PATH", "data/analyzed_news.jsonl"))
 
+SHOW_POLIT_DASHBOARD = os.getenv("SHOW_POLIT_DASHBOARD", "false").lower() == "true"
+
 st.set_page_config(
     page_title="NewsAuto Dashboard",
     page_icon="📰",
@@ -554,9 +556,15 @@ def render_political_dashboard(df: pd.DataFrame) -> None:
 
 st.sidebar.title("NewsAuto")
 
+views = ["Tech"]
+
+if SHOW_POLIT_DASHBOARD:
+    views.append("Polit")
+
+
 selected_view = st.sidebar.radio(
     "Dashboard",
-    ["Polit", "Tech"],
+    views,
     index=0,
     key="dashboard_view",
 )
