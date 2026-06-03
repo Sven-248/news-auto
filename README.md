@@ -357,6 +357,4 @@ Possible next steps:
 
 ## License
 
-This project is currently intended as a personal portfolio and learning project.
-
-Add a license before using or distributing it publicly.
+This project is licensed under the [MIT License](LICENSE).
