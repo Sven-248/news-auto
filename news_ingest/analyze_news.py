@@ -22,6 +22,9 @@ LLM_TIMEOUT_SECONDS = int(os.getenv("LLM_TIMEOUT_SECONDS", "300"))
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 LLM_NUM_PREDICT = int(os.getenv("LLM_NUM_PREDICT", "1200"))
 
+ANALYZE_LIMIT = int(os.getenv("ANALYZE_LIMIT", "30"))
+ANALYZE_RANDOM = os.getenv("ANALYZE_RANDOM", "true").lower() == "true"
+
 
 def get_ollama_base_url() -> str:
     if "/api/generate" in LLM_URL:
@@ -91,9 +94,14 @@ def call_llm(prompt: str) -> dict:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--limit", type=int, default=None, help="Analyze only N articles"
+        "--limit", type=int, default=ANALYZE_LIMIT, help="Analyze only N articles"
     )
-    parser.add_argument("--random", action="store_true", help="Select random articles")
+    parser.add_argument(
+        "--random",
+        action="store_true",
+        default=ANALYZE_RANDOM,
+        help="Select random articles",
+    )
     parser.add_argument(
         "--output", type=str, default=str(OUTPUT_PATH), help="Output JSONL path"
     )

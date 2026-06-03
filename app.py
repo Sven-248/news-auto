@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 ENV_FILE = ".env.test"
 load_dotenv(ENV_FILE)
 
+DEMO = os.getenv("DEMO", "false").lower() == "true"
+
 POLIT_DATA_PATH = Path(
     os.getenv("POLIT_DASHBOARD_DATA_PATH", "demo/analyzed_demo_polit.jsonl")
 )
@@ -16,8 +18,6 @@ POLIT_DATA_PATH = Path(
 TECH_DATA_PATH = Path(
     os.getenv("TECH_DASHBOARD_DATA_PATH", "demo/analyzed_demo_tech.jsonl")
 )
-
-DATA_PATH = Path(os.getenv("DASHBOARD_DATA_PATH", "data/analyzed_news.jsonl"))
 
 SHOW_POLIT_DASHBOARD = os.getenv("SHOW_POLIT_DASHBOARD", "false").lower() == "true"
 
@@ -555,6 +555,15 @@ def render_political_dashboard(df: pd.DataFrame) -> None:
 
 
 st.sidebar.title("NewsAuto")
+
+if DEMO:
+    st.sidebar.caption("Demo mode")
+else:
+    st.sidebar.caption("Local mode")
+
+if st.sidebar.button("Daten neu laden"):
+    st.cache_data.clear()
+    st.rerun()
 
 views = ["Tech"]
 
