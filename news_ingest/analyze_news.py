@@ -7,6 +7,13 @@ from dotenv import load_dotenv
 import random
 import argparse
 from analysis_profiles import build_prompt
+from db import (
+    get_connection,
+    init_db,
+    get_unanalyzed_articles,
+    save_analysis,
+    save_analysis_error,
+)
 
 ENV_FILE = ".env.test"
 load_dotenv(ENV_FILE)
@@ -24,6 +31,15 @@ LLM_NUM_PREDICT = int(os.getenv("LLM_NUM_PREDICT", "1200"))
 
 ANALYZE_LIMIT = int(os.getenv("ANALYZE_LIMIT", "30"))
 ANALYZE_RANDOM = os.getenv("ANALYZE_RANDOM", "true").lower() == "true"
+
+NEWS_DB_PATH = Path(os.getenv("NEWS_DB_PATH", "data/newsauto.db"))
+ANALYZE_FROM_DB = os.getenv("ANALYZE_FROM_DB", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+ANALYZE_PROFILE = os.getenv("ANALYZE_PROFILE", "tech")
 
 
 def get_ollama_base_url() -> str:
@@ -117,6 +133,69 @@ def call_llm(prompt: str) -> dict:
         }
 
 
+def analyze_from_db(args) -> None:
+    conn = get_connection(NEWS_DB_PATH)
+    init_db(conn)
+
+    articles = get_unanalyzed_articles(
+        conn=conn,
+        source_profile=args.source_profile,
+        analysis_profile=args.source_profile,
+        limit=args.limit,
+        random_order=args.random,
+    )
+
+    print(f"Loaded unanalyzed DB articles: {len(articles)}")
+
+    if not articles:
+        print("No new articles to analyze.")
+        conn.close()
+        return
+
+    for i, article in enumerate(articles, start=1):
+        title = article.get("title") or "Ohne Titel"
+        article_id = article["id"]
+
+        print(f"[{i}/{len(articles)}] analyzing: {title}", flush=True)
+
+        text = article.get("full_text") or article.get("teaser") or ""
+
+        if len(text.strip()) < MIN_TEXT_LENGTH:
+            msg = "too little text"
+            print(f"[{i}/{len(articles)}] skipped: {msg}", flush=True)
+            save_analysis_error(
+                conn=conn,
+                article_id=article_id,
+                analysis_profile=args.source_profile,
+                error=msg,
+            )
+            continue
+
+        try:
+            profile, prompt = build_prompt(article)
+            analysis = call_llm(prompt)
+
+            save_analysis(
+                conn=conn,
+                article_id=article_id,
+                analysis_profile=profile,
+                analysis=analysis,
+            )
+
+        except Exception as e:
+            print(f"[{i}/{len(articles)}] error: {e}", flush=True)
+
+            save_analysis_error(
+                conn=conn,
+                article_id=article_id,
+                analysis_profile=args.source_profile,
+                error=str(e),
+            )
+
+    conn.close()
+    print("DB analysis finished.")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -137,9 +216,26 @@ def main():
         default="auto",
         help="Force an analysis profile or use automatic selection",
     )
+    parser.add_argument(
+        "--from-db",
+        action="store_true",
+        default=ANALYZE_FROM_DB,
+        help="Read unanalyzed articles from SQLite instead of JSONL",
+    )
+    parser.add_argument(
+        "--source-profile",
+        type=str,
+        default=ANALYZE_PROFILE,
+        help="Article source profile to analyze, e.g. tech or polit",
+    )
+
     args = parser.parse_args()
 
     check_ollama()
+
+    if args.from_db:
+        analyze_from_db(args)
+        return
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
